@@ -4,8 +4,9 @@ from database.models import Talent, Achievement, Challenge, Task, Step
 class DatabaseService:
     def save_talent(self, talents):
         for i in range(len(talents)):
-            print(i,talent)
+
             talent = talents.loc[i]
+            print(i, talent)
             talent_db = Talent.objects.create(name=talent["talant_name"])
 
     def save_achievements(self, achievements):
