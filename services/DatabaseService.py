@@ -5,7 +5,7 @@ class DatabaseService:
     def save_talent(self, talents):
         for i in range(len(talents)):
 
-            talent = talents.loc[i]
+            talent = talents.iloc[i]
             print(i, talent)
             talent_db = Talent.objects.create(name=talent["talant_name"])
 
