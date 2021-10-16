@@ -14,7 +14,7 @@ from fastapi import (FastAPI,
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 
-from database.models import (GiftedChild)
+from database.models import (GiftedChild, Talent)
 
 
 # Main app
@@ -34,6 +34,11 @@ app.add_middleware(
           summary='Возвращает инфу о всех детях в ДБ')
 async def all_children():
     return jsonable_encoder([i for i in GiftedChild.objects.all().values()])
+
+@app.post("/talent/all", tags=['talent'],
+          summary='Возвращает все таланты')
+async def all_talent():
+    return jsonable_encoder([i for i in Talent.objects.all().values()])
 
 #лучше стартовать из под консоли
 # if __name__ == "__main__":
