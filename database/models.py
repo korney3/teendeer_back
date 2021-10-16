@@ -45,12 +45,24 @@ class User(models.Model):
     organizations = models.CharField(max_length=512, null=True, blank=True)
     date_of_birth = models.DateTimeField(auto_now=False, null=True, blank=True)
 
+    user_sex = models.IntegerField(null=False, blank=False, default=1)
+    vk_url = models.CharField(max_length=64, null=True, blank=True, default="login")
+    vk_subscribers = models.IntegerField(null=False, blank=False, default=1)
+    geo = models.CharField(max_length=512, null=True, blank=True)
+
 
 class Talent(models.Model):
     # uuid = models.IntegerField(primary_key=True)
 
     name = models.CharField(max_length=64, null=False, blank=False, default="talent", unique=False)
-    users = models.ManyToManyField(User, blank=True)
+    # users = models.ManyToManyField(User, blank=True)
+
+
+class UserTalent(models.Model):
+    user_id = models.ForeignKey(User)
+    talent_id = models.ForeignKey(Talent)
+    talent_level = models.IntegerField(null=False, blank=False, default=1)
+    talent_points = models.IntegerField(null=False, blank=False, default=1)
 
 
 class Achievement(models.Model):
@@ -61,6 +73,7 @@ class Achievement(models.Model):
     description = models.CharField(max_length=512, null=True, blank=True)
     achievement_type = models.CharField(max_length=64, null=False, blank=True, default="")
     talent_points = models.IntegerField(null=False, blank=False, default=1)
+    users = models.ManyToManyField(User, blank=True)
 
 
 class Challenge(models.Model):
@@ -96,3 +109,32 @@ class Step(models.Model):
     meta_type = models.CharField(max_length=64, null=True, blank=True)
     meta_urls = models.CharField(max_length=512, null=True, blank=True)
 
+
+class Product(models.Model):
+    product_name = models.CharField(max_length=128, null=False, blank=False, default="product")
+    description = models.CharField(max_length=512, null=True, blank=True)
+    image_url = models.CharField(max_length=512, null=True, blank=True)
+    price = models.IntegerField(null=False, blank=False, default=0)
+    geo = models.CharField(max_length=512, null=True, blank=True)
+    url = models.CharField(max_length=512, null=True, blank=True)
+    product_type = models.CharField(max_length=64, null=True, blank=True)
+
+
+class UserProduct(models.Model):
+    users = models.ForeignKey(User)
+    products = models.ForeignKey(Product)
+    got_at = models.DateTimeField(auto_now_add=True)
+
+
+class UserStep(models.Model):
+    users = models.ForeignKey(User)
+    steps = models.ForeignKey(Step)
+    active = models.BooleanField(default=False)
+
+
+class Post(models.Model):
+    user_steps = models.ForeignKey(UserStep)
+    description = models.CharField(max_length=512, null=True, blank=True)
+    image_url = models.CharField(max_length=512, null=True, blank=True)
+    date_of_publication = models.DateTimeField(auto_now=False, null=True, blank=True)
+    social_url = models.CharField(max_length=512, null=True, blank=True)
