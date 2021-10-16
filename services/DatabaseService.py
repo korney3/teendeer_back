@@ -30,7 +30,7 @@ class DatabaseService:
     def save_challenges(self, challenges):
         for i in range(len(challenges)):
             challenge = challenges.loc[i]
-            talent_db = Talent.objects.get(id=challenge["talant_id"]).first()
+            talent_db = Talent.objects.get(id=challenge["talant_id"]).values()[0]
             achievement_db = Achievement.objects.get(id=challenge["achievement_id"]).values()[0]
             challenge_db = Challenge.objects.create(challenge_name=challenge["challenge_name"],
                                                     image_url=challenge["image_url"],
@@ -42,7 +42,7 @@ class DatabaseService:
     def save_tasks(self, tasks):
         for i in range(len(tasks)):
             task = tasks.loc[i]
-            challenge_db = Challenge.objects.get(id=task["challenge_id"]).first()
+            challenge_db = Challenge.objects.get(id=task["challenge_id"]).values()[0]
             task_db = Task.objects.create(challenge=challenge_db,
                                           task_name=task["task_name"],
                                           description=task["description"],
@@ -53,7 +53,7 @@ class DatabaseService:
     def save_steps(self, steps):
         for i in range(len(steps)):
             step = steps.loc[i]
-            task_db = Task.objects.get(id=step["task_id"]).first()
+            task_db = Task.objects.get(id=step["task_id"]).values()[0]
             step_db = Step.objects.create(task=task_db,
                                           step_name=step["step_name"],
                                           step_number=step["step_number"],
