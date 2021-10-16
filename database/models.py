@@ -32,7 +32,6 @@ class GiftedChild(models.Model):
 
 
 class User(models.Model):
-    uuid = models.IntegerField(primary_key=True)
     fullname = models.CharField(max_length=64, null=True, blank=True)
 
     login = models.CharField(max_length=64, null=False, blank=False)
@@ -48,13 +47,20 @@ class User(models.Model):
 
 
 class Talent(models.Model):
-    uuid = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=64, null=False, blank=False)
 
 
 class Challenge(models.Model):
-    uuid = models.IntegerField(primary_key=True)
     challenge_name = models.CharField(max_length=64, null=False, blank=False)
     image_url = models.CharField(max_length=512, null=True, blank=True)
     req_talent_level = models.IntegerField(primary_key=False)
     talent = models.ForeignKey(Talent, on_delete=models.CASCADE)
+
+
+class Task(models.Model):
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE)
+    task_name = models.CharField(max_length=64, null=False, blank=False)
+    description = models.CharField(max_length=512, null=True, blank=True)
+    image_url = models.CharField(max_length=512, null=True, blank=True)
+    task_points = models.IntegerField(primary_key=False)
+
