@@ -6,7 +6,8 @@ class DatabaseService:
         for i in range(len(talents)):
 
             talent = talents.iloc[i]
-            print(i, talent)
+            print(i)
+            print(talent["talant_name"])
             talent_db = Talent.objects.create(name=talent["talant_name"])
 
     def save_achievements(self, achievements):
