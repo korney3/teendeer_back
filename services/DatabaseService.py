@@ -66,25 +66,65 @@ class DatabaseService:
     def save_users(self, users):
         for i in range(len(users)):
             user = users.loc[i]
-            birthday = user['date_of_birth']
-            
 
             user = User.objects.create(fullname=user['fullname'],
-                                login='',
-                                password='',
-                                user_level=0,
-                                points=0,
-                                bio=user['bio'],
-                                school=user['schools'],
-                                organizations=user['organizations'],
-                                # date_of_birth=user['date_of_birth'],
-                                user_sex=user['sex'],
-                                vk_url=user['vk_url'],
-                                vk_subscribers=user['vk_subscribers'],
-                                geo=user['geo']
-                                )
+                                       login='',
+                                       password='',
+                                       user_level=0,
+                                       points=0)
+
             try:
-                user.date_of_birth = birthday
+                user.date_of_birth = user['date_of_birth']
+                user.save()
+            except:
+                pass
+
+            try:
+                user.bio = user['bio']
+                user.save()
+            except:
+                pass
+
+            try:
+                user.school = user['schools']
+                user.save()
+            except:
+                pass
+
+            try:
+                user.organizations = user['organizations']
+                user.save()
+            except:
+                pass
+
+            try:
+                user.organizations = user['organizations']
+                user.save()
+            except:
+                pass
+
+            try:
+                user.user_sex = user['sex']
+                user.save()
+            except:
+                user.user_sex = 3
+                user.save()
+
+            try:
+                user.geo = user['geo']
+                user.save()
+            except:
+                user.user_sex = 3
+                user.save()
+
+            try:
+                user.vk_url = user['vk_url']
+                user.save()
+            except:
+                pass
+
+            try:
+                user.vk_subscribers = user['vk_subscribers']
                 user.save()
             except:
                 pass
