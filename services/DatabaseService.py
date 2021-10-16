@@ -1,4 +1,4 @@
-from database.models import Talent, Achievement, Challenge, Task, Step, User
+from database.models import Talent, Achievement, Challenge, Task, Step, User, Product
 import random
 import string
 
@@ -8,8 +8,8 @@ def generate_random_string(length):
     rand_string = ''.join(random.choice(letters) for _ in range(length))
     return rand_string
 
-class DatabaseService:
 
+class DatabaseService:
     def save_talent(self, talents):
         for i in range(len(talents)):
             talent = talents.iloc[i]
@@ -69,6 +69,21 @@ class DatabaseService:
                                           button_text=step["button_text"],
                                           meta_type=step["meta_type"],
                                           meta_urls=step["meta_urls"])
+
+    def save_posts(self, events):
+        for i in range(len(events)):
+            event = events.loc[i]
+
+            from urlextract import URLExtract
+            extractor = URLExtract()
+            urls = extractor.find_urls(event['attachments'])
+            event = Product.objects.create(product_name="Анонс",
+                                           description=event["text"],
+                                           price=random.randint(0, 20),
+                                           url=urls[0],
+                                           image_url=urls[-1],
+                                           geo="",
+                                           product_type="Пост")
 
     def save_users(self, users):
         for i in range(len(users)):
