@@ -2,23 +2,18 @@ import os
 from typing import Optional
 
 import django
-
-from services.ChallengesParser import ChallengesParser
+from django.db.models import Q
 from pydantic import BaseModel
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hackathon.settings')
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
-from fastapi import (FastAPI,
-                     HTTPException,
-                     Depends,
-                     status,
-                     BackgroundTasks)
+from fastapi import (FastAPI)
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 
-from database.models import (GiftedChild, Talent, Achievement, Step, Challenge, Task, User)
+from database.models import (Talent, Challenge, User, UserTalent)
 
 # Main app
 app = FastAPI()
@@ -31,12 +26,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.post("/children/all", tags=['children'],
-          summary='Возвращает инфу о всех детях в ДБ')
-async def all_children():
-    return jsonable_encoder([i for i in GiftedChild.objects.all().values()])
 
 
 @app.get("/talent/all", tags=['talent'],
@@ -58,16 +47,24 @@ class UserFront(BaseModel):
     organizations: Optional[list] = None
 
     date_of_birth: Optional[str] = None
-    talents: Optional[list] = None
+    user_sex: Optional[int] = 1
+    vk_url: Optional[str] = None
+    vk_subscribers: Optional[int] = None
+
+    geo: Optional[str] = None
+    talent_info: Optional[list] = None
+
 
 class TalentFront(BaseModel):
     name: str
 
+
 class ChallengeFront(BaseModel):
     challenge_name: str
-    image_url : str = None
-    req_talent_level : int = 1
+    image_url: str = None
+    req_talent_level: int = 1
     description: str = None
+    talent_id: int
 
 
 @app.post("/user/", tags=['user_post'],
@@ -80,25 +77,64 @@ async def сreate_user(user: UserFront):
         bio=user.bio,
         school=user.school,
         organizations=user.organizations,
-        date_of_birth=user.date_of_birth
-    )
-    res = jsonable_encoder(userDb)
-    res["talents"] = None
-    return res
+        date_of_birth=user.date_of_birth,
+        user_sex=user.user_sex,
+        vk_url=user.vk_url,
+        vk_subscribers=user.vk_subscribers,
+        geo=user.geo)
 
+    res = jsonable_encoder(userDb)
+    res["talent_info"] = None
+    return res
 
 @app.get("/user/{login}", tags=['user_get'],
          summary='Получение юзера после авторизаци или регистрации')
 async def get_user(login):
     userDb = User.objects.get(login=login)
     res = jsonable_encoder(userDb)
-    res["talents"] = [x[0] for x in Talent.objects.filter(users__login=login).values_list("id")]
+    user_id = userDb.id
+    userTalentsDb = UserTalent.objects.filter(user_id=user_id)
+    talent_infos = {}
+    for userTalentDb in userTalentsDb:
+        talent_info = {
+            "talent_id": userTalentDb.talent_id,
+            "talent_points": userTalentDb.talent_points,
+            "talent_level": userTalentDb.talent_level
+        }
+        talent_infos.append(talent_info)
 
+    res["talent_info"] = talent_infos
     return res
+
+@app.get("/user", tags=['user_get_all'],
+         summary='Получение юзера после авторизации или регистрации')
+async def get_all_user():
+    logins =[i['login'] for i in User.objects.all().values("login")]
+
+    ress = []
+    for login in logins:
+        userDb = User.objects.get(login=login)
+        res = jsonable_encoder(userDb)
+        user_id = userDb.id
+        userTalentsDb = UserTalent.objects.filter(user_id=user_id)
+        talent_infos = []
+        for userTalentDb in userTalentsDb:
+            talent_info = {
+                "talent_id": userTalentDb.talent_id,
+                "talent_points": userTalentDb.talent_points,
+                "talent_level": userTalentDb.talent_level
+            }
+            talent_infos.append(talent_info)
+    
+        res["talent_info"] = talent_infos
+        ress.append(res)
+
+
+    return jsonable_encoder(ress)
 
 
 @app.put("/user/{id}", tags=['user_put'],
-         summary='Получение юзера после авторизаци или регистрации')
+         summary='Изменение пользователя')
 async def change_user(id: int, user: UserFront):
     userDb = User.objects.get(id=id)
     userDb.fullname = user.fullname
@@ -110,14 +146,39 @@ async def change_user(id: int, user: UserFront):
     userDb.date_of_birth = user.date_of_birth
     userDb.points = user.points
     userDb.user_level = user.user_level
+    userDb.vk_url = user.vk_url
+    userDb.vk_subscribers = user.vk_subscribers
+    userDb.geo = user.geo
     userDb.save()
-    for id_talent in user.talents:
-        talentDb = Talent.objects.get(id = id_talent)
-        talentDb.users.add(userDb)
-        talentDb.save()
+    talent_infos = []
+    for userTalent in user.talent_info:
+        userTalentDb = UserTalent.objects.filter(Q(talent_id = userTalent["talent_id"]) & Q(user_id = id))
+        if len(userTalentDb)==0:
+            userTalentDb = UserTalent.objects.create(
+                user=userDb,
+                talent = Talent.objects.get(id = userTalent["talent_id"]),
+                talent_level = userTalent['talent_level'],
+                talent_points = userTalent['talent_points']
+            )
+        else:
+
+            for x in userTalentDb:
+                userTalentDb = x
+                break
+
+            userTalentDb.talent_level = userTalent['talent_level']
+            userTalentDb.talent_points = userTalent['talent_points']
+            userTalentDb.save()
+        talent_infos.append(
+            {"talent_id": userTalent['talent_id'],
+             "talent_points": userTalent['talent_points'],
+             "talent_level": userTalent['talent_level']}
+        )
+
     res = jsonable_encoder(userDb)
-    res["talents"] = [x[0] for x in Talent.objects.filter(users__id=id).values_list("id")]
+    res["talent_info"] = talent_infos
     return res
+
 
 # /user - POST (добавление юзера после авторизаци или регистрации), { login: string, ..., name: '' } : models.User
 # /user/:login - GET (получение модели юзера по логину) : models.Usersx
@@ -133,18 +194,64 @@ async def сreate_talent(talent: TalentFront):
 
     return res
 
+
 @app.get("/talent/", tags=['talent_get'],
-          summary='Получение таланта')
+         summary='Получение таланта')
 async def get_talent():
     talentsDb = list(Talent.objects.all())
     res = [jsonable_encoder(x) for x in talentsDb]
 
     return res
 
+
 # /talent - POST (создание таланта), { name: string; } : models.Talent
 # /talents - GET : models.Talent[]
 
+@app.get("/challenge/{talent_id}", tags=['challenge_get'],
+         summary='Получение челленджей')
+async def get_challenge(talent_id):
+    challengesDb = list(Challenge.objects.filter(talent__id=talent_id))
+    res = [jsonable_encoder(x) for x in challengesDb]
+    res_with_talents = []
+    for challengeJson in res:
+        challengeJson["talent_id"] = talent_id
+        res_with_talents.append(challengeJson)
 
+    return res_with_talents
+
+
+@app.post("/challenge", tags=['challenge_post'],
+          summary='Добавление челленджей')
+async def post_challenge(challenge: ChallengeFront):
+    challengeDb = Challenge.objects.create(
+        challenge_name=challenge.name,
+        image_url=challenge.url,
+        req_talent_level=challenge.req_talent_level,
+        description=challenge.description
+    )
+    talentDb = Talent.objects.get(id=challenge.talent_id)
+    challengeDb.talent = talentDb
+    challengeDb.save()
+    res = jsonable_encoder(challengeDb)
+    res["talent_id"] = challenge.talent_id
+    return res
+
+
+@app.put("/challenge/{id}", tags=['challenge_put'],
+         summary='Обновление челленджей')
+async def put_challenge(id: int, challenge: ChallengeFront):
+    challengeDb = Challenge.objects.get(id=id)
+    challengeDb.challenge_name = challenge.challenge_name
+    challengeDb.image_url = challenge.url
+    challengeDb.req_talent_level = challenge.req_talent_level
+    challengeDb.description = challenge.description
+
+    talentDb = Talent.objects.get(id=challenge.talent_id)
+    challengeDb.talent = talentDb
+    challengeDb.save()
+    res = jsonable_encoder(challengeDb)
+    res["talent_id"] = challenge.talent_id
+    return res
 
 # /challenges - GET (список доступных челенджев, потом докрутим проверку) : models.Challenge[]
 # /challenge - POST (создать челендж), { ...partial(models.Challenge) } : models.Challenge
