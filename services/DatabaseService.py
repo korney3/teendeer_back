@@ -1,11 +1,10 @@
-from database.models import Talent, Achievement, Challenge, Task, Step
+from database.models import Talent, Achievement, Challenge, Task, Step, User
 
 
 class DatabaseService:
 
     def save_talent(self, talents):
         for i in range(len(talents)):
-
             talent = talents.iloc[i]
             print(i)
             print(talent["talant_name"])
@@ -64,3 +63,20 @@ class DatabaseService:
                                           meta_type=step["meta_type"],
                                           meta_urls=step["meta_urls"])
 
+    def save_users(self, users):
+        for i in range(len(users)):
+            user = users.loc[i]
+            User.objects.create(fullname=user['fullname'],
+                                login='',
+                                password='',
+                                user_level=0,
+                                points=0,
+                                bio=user['bio'],
+                                school=user['schools'],
+                                organizations=user['organizations'],
+                                date_of_birth=user['date_of_birth'],
+                                user_sex=user['sex'],
+                                vk_url=user['vk_url'],
+                                vk_subscribers=user['vk_subscribers'],
+                                geo=user['geo']
+                                )
