@@ -9,7 +9,7 @@ from database.models import Talent, Achievement, Step, Challenge, Task
 from services.DatabaseService import DatabaseService
 
 class UsersParser(DatabaseService):
-    def __init__(self, path_to_file = "../data/nb_yanao_members.csv"):
+    def __init__(self, path_to_file = "./data/nb_yanao_members.csv"):
         self.path_to_file = path_to_file
 
     def parse(self):

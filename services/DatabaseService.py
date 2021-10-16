@@ -66,7 +66,10 @@ class DatabaseService:
     def save_users(self, users):
         for i in range(len(users)):
             user = users.loc[i]
-            User.objects.create(fullname=user['fullname'],
+            birthday = user['date_of_birth']
+            
+
+            user = User.objects.create(fullname=user['fullname'],
                                 login='',
                                 password='',
                                 user_level=0,
@@ -74,9 +77,14 @@ class DatabaseService:
                                 bio=user['bio'],
                                 school=user['schools'],
                                 organizations=user['organizations'],
-                                date_of_birth=user['date_of_birth'],
+                                # date_of_birth=user['date_of_birth'],
                                 user_sex=user['sex'],
                                 vk_url=user['vk_url'],
                                 vk_subscribers=user['vk_subscribers'],
                                 geo=user['geo']
                                 )
+            try:
+                user.date_of_birth = birthday
+                user.save()
+            except:
+                pass
