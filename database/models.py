@@ -77,7 +77,6 @@ class Challenge(models.Model):
 
 class Task(models.Model):
     uuid = models.IntegerField(primary_key=True)
-
     challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, null=False, blank=False)
     task_name = models.CharField(max_length=64, null=False, blank=False, default="task")
     description = models.CharField(max_length=512, null=True, blank=True)
@@ -88,7 +87,6 @@ class Task(models.Model):
 
 class Step(models.Model):
     uuid = models.IntegerField(primary_key=True)
-
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
     step_name = models.CharField(max_length=64, null=False, blank=False, default="step")
     action = models.CharField(max_length=64, null=False, blank=False, default="action")

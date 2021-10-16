@@ -1,14 +1,11 @@
 import pandas as pd
 
-from database.models import Talent, Achievement, Step, Challenge, Task
-from services.DatabaseService import DatabaseService
-
 import os
 import django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hackathon.settings')
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-django.setup()
 
+
+from database.models import Talent, Achievement, Step, Challenge, Task
+from services.DatabaseService import DatabaseService
 
 class ChallengesParser(DatabaseService):
     def __init__(self, path_to_file = "../data/Challenges_DS29.xlsx"):
