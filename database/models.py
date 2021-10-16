@@ -48,6 +48,7 @@ class User(models.Model):
 
 class Talent(models.Model):
     name = models.CharField(max_length=64, null=False, blank=False)
+    users = models.ManyToManyField(User)
 
 
 class Challenge(models.Model):
@@ -55,6 +56,8 @@ class Challenge(models.Model):
     image_url = models.CharField(max_length=512, null=True, blank=True)
     req_talent_level = models.IntegerField(primary_key=False)
     talent = models.ForeignKey(Talent, on_delete=models.CASCADE)
+    max_tasks = models.IntegerField(primary_key=False)
+    description = models.CharField(max_length=512, null=True, blank=True)
 
 
 class Task(models.Model):
@@ -63,4 +66,16 @@ class Task(models.Model):
     description = models.CharField(max_length=512, null=True, blank=True)
     image_url = models.CharField(max_length=512, null=True, blank=True)
     task_points = models.IntegerField(primary_key=False)
+    max_steps = models.IntegerField(primary_key=False)
+    task_number = models.IntegerField(primary_key=False)
 
+
+class Step(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    step_name = models.CharField(max_length=64, null=False, blank=False)
+    step_number = models.IntegerField(primary_key=False)
+    step_text = models.CharField(max_length=512, null=True, blank=True)
+    image_url = models.CharField(max_length=512, null=True, blank=True)
+    button_text = models.CharField(max_length=512, null=True, blank=True)
+    meta_type = models.CharField(max_length=64, null=True, blank=True)
+    meta_urls = models.CharField(max_length=512, null=True, blank=True)
