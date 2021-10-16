@@ -32,30 +32,29 @@ class GiftedChild(models.Model):
 
 
 class User(models.Model):
-    uuid = models.IntegerField(primary_key=True)
-    fullname = models.CharField(max_length=64, null=True, blank=True)
+    # uuid = models.IntegerField(primary_key=True)
+    fullname = models.CharField(max_length=64, null=False, blank=False)
 
-    login = models.CharField(max_length=64, null=False, blank=False, default="login", unique=False)
-    password = models.CharField(max_length=64, null=False, blank=False, default="login")
+    login = models.CharField(max_length=64, null=False, blank=False, default="login", unique=True)
+    password = models.CharField(max_length=64, null=True, blank=True, default="login")
 
     user_level = models.IntegerField(null=False, blank=False, default=1)
 
     bio = models.CharField(max_length=512, null=True, blank=True)
     school = models.CharField(max_length=512, null=True, blank=True)
     organizations = models.CharField(max_length=512, null=True, blank=True)
-
     date_of_birth = models.DateTimeField(auto_now=False, null=True, blank=True)
 
 
 class Talent(models.Model):
-    uuid = models.IntegerField(primary_key=True)
+    # uuid = models.IntegerField(primary_key=True)
 
     name = models.CharField(max_length=64, null=False, blank=False, default="talent", unique=False)
     users = models.ManyToManyField(User, blank=True)
 
 
 class Achievement(models.Model):
-    uuid = models.IntegerField(primary_key=True)
+    # uuid = models.IntegerField(primary_key=True)
 
     name = models.CharField(max_length=64, null=False, blank=False, default="achievement", unique=False)
     image_url = models.CharField(max_length=512, null=True, blank=True)
@@ -65,7 +64,7 @@ class Achievement(models.Model):
 
 
 class Challenge(models.Model):
-    uuid = models.IntegerField(primary_key=True)
+    # uuid = models.IntegerField(primary_key=True)
 
     challenge_name = models.CharField(max_length=64, null=False, blank=False, default="challenge")
     image_url = models.CharField(max_length=512, null=True, blank=True)
@@ -76,7 +75,7 @@ class Challenge(models.Model):
 
 
 class Task(models.Model):
-    uuid = models.IntegerField(primary_key=True)
+    # uuid = models.IntegerField(primary_key=True)
     challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, null=False, blank=False)
     task_name = models.CharField(max_length=64, null=False, blank=False, default="task")
     description = models.CharField(max_length=512, null=True, blank=True)
@@ -86,7 +85,7 @@ class Task(models.Model):
 
 
 class Step(models.Model):
-    uuid = models.IntegerField(primary_key=True)
+    # uuid = models.IntegerField(primary_key=True)
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
     step_name = models.CharField(max_length=64, null=False, blank=False, default="step")
     action = models.CharField(max_length=64, null=False, blank=False, default="action")
