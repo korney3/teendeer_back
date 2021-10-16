@@ -1,6 +1,13 @@
 import pandas as pd
 
+from database.models import Talent, Achievement, Step, Challenge, Task
 from services.DatabaseService import DatabaseService
+
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hackathon.settings')
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+django.setup()
 
 
 class ChallengesParser(DatabaseService):
@@ -21,6 +28,17 @@ class ChallengesParser(DatabaseService):
         self.save_steps(steps)
 
 
+def main():
+    Talent.objects.all().delete()
+    Achievement.objects.all().delete()
+    Step.objects.all().delete()
+    Challenge.objects.all().delete()
+    Task.objects.all().delete()
 
+    parser = ChallengesParser()
+    parser.parse()
+
+if __name__ == "__main__":
+    main()
 
 
