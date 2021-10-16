@@ -35,7 +35,7 @@ app.add_middleware(
 async def all_children():
     return jsonable_encoder([i for i in GiftedChild.objects.all().values()])
 
-@app.post("/talent/all", tags=['talent'],
+@app.get("/talent/all", tags=['talent'],
           summary='Возвращает все таланты')
 async def all_talent():
     return jsonable_encoder([i for i in Talent.objects.all().values()])
