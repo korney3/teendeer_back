@@ -57,4 +57,4 @@ class Challenge(models.Model):
     challenge_name = models.CharField(max_length=64, null=False, blank=False)
     image_url = models.CharField(max_length=512, null=True, blank=True)
     req_talent_level = models.IntegerField(primary_key=False)
-    talent_uuid = models.ForeignKey(Talent)
+    talent_uuid = models.ForeignKey(Talent, on_delete=models.CASCADE)
