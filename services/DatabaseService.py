@@ -1,5 +1,12 @@
 from database.models import Talent, Achievement, Challenge, Task, Step, User
+import random
+import string
 
+
+def generate_random_string(length):
+    letters = string.ascii_lowercase
+    rand_string = ''.join(random.choice(letters) for _ in range(length))
+    return rand_string
 
 class DatabaseService:
 
@@ -68,7 +75,7 @@ class DatabaseService:
             user = users.loc[i]
 
             user = User.objects.create(fullname=user['fullname'],
-                                       login='',
+                                       login=generate_random_string(16),
                                        password='',
                                        user_level=0,
                                        points=0)
