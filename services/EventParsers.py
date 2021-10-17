@@ -13,7 +13,7 @@ class EventParser(DatabaseService):
         self.path_to_file = path_to_file
 
     def parse(self):
-        posts = pd.read_csv(self.path_to_file)
+        posts = pd.read_csv(self.path_to_file, nrows = 20)
         self.save_posts(posts)
 
 def main():

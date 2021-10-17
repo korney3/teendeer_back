@@ -6,6 +6,7 @@ from django.db.models import Q
 from pydantic import BaseModel
 from urlextract import URLExtract
 
+from services.EventParsers import EventParser
 from services.UsersParsers import UsersParser
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hackathon.settings')
@@ -16,7 +17,7 @@ from fastapi import (FastAPI)
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 
-from database.models import (Talent, Challenge, User, UserTalent, Achievement, Task, Step, UserStep)
+from database.models import (Talent, Challenge, User, UserTalent, Achievement, Task, Step, UserStep, Product, Post)
 
 # Main app
 app = FastAPI()
@@ -102,6 +103,12 @@ class StepFront(BaseModel):
     meta_type: str = None
     meta_urls: str = None
 
+class PostFront(BaseModel):
+    user_id: int
+    step_id:int
+    description : str = None
+    image_url : str = None
+    social_url : str = None
 
 @app.post("/user", tags=['user_post'],
           summary='Добавление юзера после авторизаци или регистрации')
@@ -382,10 +389,6 @@ async def put_challenge(id: int, challenge: ChallengeFront):
     return res
 
 
-@app.get("/parse")
-async def parse_users_from_file():
-    parser = UsersParser()
-    parser.parse()
 
 
 # /challenges - GET (список доступных челенджев, потом докрутим проверку) : models.Challenge[]
@@ -483,10 +486,11 @@ def convert_meta_urls_list_to_string(meta_url_list):
 async def get_step(task_id):
     stepDb = list(Step.objects.filter(task__id=task_id))
     res = [jsonable_encoder(x) for x in stepDb]
-    res['meta_urls'] = convert_meta_urls_string_to_list(res['meta_urls'])
     res_with_tasks = []
     for stepJson in res:
         stepJson["task_id"] = task_id
+        stepJson['meta_urls'] = convert_meta_urls_string_to_list(stepJson['meta_urls'])
+
         res_with_tasks.append(stepJson)
 
     return res
@@ -501,10 +505,12 @@ async def get_all_steps():
         res_with_task = jsonable_encoder("")
     else:
         res = [jsonable_encoder(x) for x in stepsDb]
-        res['meta_urls'] = convert_meta_urls_string_to_list(res['meta_urls'])
+
+
         res_with_task = []
         for stepJson in res:
             stepJson["task_id"] = Step.objects.get(id=stepJson["id"]).task_id
+            stepJson['meta_urls'] = convert_meta_urls_string_to_list(stepJson['meta_urls'])
             res_with_task.append(stepJson)
 
     return res_with_task
@@ -559,6 +565,51 @@ async def put_step(id: int, step: StepFront):
 # /steps/:taskId - GET (список доступных задач, проверку сделаем потом) : models.Task[]
 # /step/:id - PUT : models.Task
 # /step/:id - DELETE
+
+@app.post("/post", tags=['post_post'],
+          summary='Добавление поста')
+async def сreate_post(post: PostFront):
+    userStepDb = UserStep.objects.filter(Q(steps_id=post.step_id) & Q(users_id=post.user_id))
+    for x in userStepDb:
+        userStepDb = x
+        break
+    postDb = Post.objects.create(
+        user_steps=userStepDb,
+        description = post.description,
+        image_url = post.image_url,
+        social_url = post.social_url
+    )
+    res = jsonable_encoder(postDb)
+    return res
+
+
+@app.get("/post/{user_id}", tags=['post_get'],
+         summary='Получение постов')
+async def get_posts(user_id):
+
+    achievementsDb = list(Achievement.objects.all())
+    res = [jsonable_encoder(x) for x in achievementsDb]
+    return res
+
+@app.get("/events", tags=['events_all_get'],
+         summary='Получение всех событий')
+async def get_all_events():
+    eventsDb = list(Product.objects.all())
+
+    res = [jsonable_encoder(x) for x in eventsDb]
+
+    return res
+
+
+@app.get("/parse")
+async def parse_users_from_file():
+    parser = UsersParser()
+    parser.parse()
+
+@app.get("/parse_events")
+async def parse_events_from_file():
+    parser = EventParser()
+    parser.parse()
 
 # лучше стартовать из под консоли
 # if __name__ == "__main__":
