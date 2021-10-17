@@ -13,7 +13,7 @@ class UsersParser(DatabaseService):
         self.path_to_file = path_to_file
 
     def parse(self):
-        users = pd.read_csv(self.path_to_file, nrows=200)
+        users = pd.read_csv(self.path_to_file)
         self.save_users(users)
 
 def main():
