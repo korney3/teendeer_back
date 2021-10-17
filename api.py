@@ -586,7 +586,7 @@ async def сreate_post(post: PostFront):
 @app.get("/post/{user_id}", tags=['post_get'],
          summary='Получение постов')
 async def get_posts(user_id):
-
+    userStepsDb = UserStep.objects.filter(users__id = user_id)
     achievementsDb = list(Achievement.objects.all())
     res = [jsonable_encoder(x) for x in achievementsDb]
     return res
