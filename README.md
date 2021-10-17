@@ -37,7 +37,11 @@ python3 manage.py migrate
 ```
 uvicorn api:app --reload --port 5000 --host=0.0.0.0
 ```
+## Functional
 
+Схема базы данных и сущности расположены в файле [models.py](database/models.py)
+
+С возможными CRUD операциями с базой данных можно ознакомиться в [api.py](api.py) 
 
 ## Authors
 
