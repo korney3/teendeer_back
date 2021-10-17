@@ -166,7 +166,7 @@ async def get_all_user():
         user_id = userDb.id
         userTalentsDb = UserTalent.objects.filter(user_id=user_id)
         talent_infos = []
-        userStepsDb = UserStep.objects.filter(user_id=user_id)
+        userStepsDb = UserStep.objects.filter(users_id=user_id)
         step_infos = []
 
         for userTalentDb in userTalentsDb:
@@ -234,7 +234,7 @@ async def change_user(id: int, user: UserFront):
 
     step_infos = []
     for userStep in user.step_info:
-        userStepDb = UserStep.objects.filter(Q(step_id=userStep["step_id"]) & Q(user_id=id))
+        userStepDb = UserStep.objects.filter(Q(steps_id=userStep["step_id"]) & Q(users_id=id))
         if len(userStepDb) == 0:
             userStepDb = UserStep.objects.create(
                 user=userDb,
@@ -337,7 +337,6 @@ async def get_all_challenge():
         res = [jsonable_encoder(x) for x in challengesDb]
         res_with_talents = []
         for challengeJson in res:
-            print(challengeJson)
             challengeJson["talent_id"] = Challenge.objects.get(id=challengeJson["id"]).talent_id
             res_with_talents.append(challengeJson)
 
@@ -430,7 +429,7 @@ async def post_task(task: TaskFront):
 
     taskDb = Task.objects.create(
         challenge=challengeDb,
-        task_name=task.name,
+        task_name=task.task_name,
         description=task.description,
         image_url=task.image_url,
         task_points=task.task_points,
