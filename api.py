@@ -4,6 +4,10 @@ from typing import Optional
 import django
 from django.db.models import Q
 from pydantic import BaseModel
+from urlextract import URLExtract
+
+from services.EventParsers import EventParser
+from services.UsersParsers import UsersParser
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hackathon.settings')
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
@@ -13,7 +17,7 @@ from fastapi import (FastAPI)
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 
-from database.models import (Talent, Challenge, User, UserTalent)
+from database.models import (Talent, Challenge, User, UserTalent, Achievement, Task, Step, UserStep, Product, Post)
 
 # Main app
 app = FastAPI()
@@ -53,6 +57,9 @@ class UserFront(BaseModel):
 
     geo: Optional[str] = None
     talent_info: Optional[list] = None
+    step_info: Optional[list] = None
+
+    achievement_ids: Optional[list] = None
 
 
 class TalentFront(BaseModel):
@@ -64,10 +71,46 @@ class ChallengeFront(BaseModel):
     image_url: str = None
     req_talent_level: int = 1
     description: str = None
-    talent_id: int
+    talent_id: int = None
+    achievement_id: int = None
 
 
-@app.post("/user/", tags=['user_post'],
+class AchievementFront(BaseModel):
+    name: str
+    image_url: str = None
+    description: str = None
+    achievement_type: str = None
+    talent_points: int = 1
+
+
+class TaskFront(BaseModel):
+    challenge_id: int
+    task_name: str
+    description: str = None
+    image_url: str = None
+    task_points: int = 1
+    task_number: int = 1
+
+
+class StepFront(BaseModel):
+    task_id: int
+    step_name: str
+    action: str = None
+    step_number: int = 1
+    step_text: str = None
+    image_url: str = None
+    button_text: str = None
+    meta_type: str = None
+    meta_urls: str = None
+
+class PostFront(BaseModel):
+    user_id: int
+    step_id:int
+    description : str = None
+    image_url : str = None
+    social_url : str = None
+
+@app.post("/user", tags=['user_post'],
           summary='Добавление юзера после авторизаци или регистрации')
 async def сreate_user(user: UserFront):
     userDb = User.objects.create(
@@ -85,7 +128,9 @@ async def сreate_user(user: UserFront):
 
     res = jsonable_encoder(userDb)
     res["talent_info"] = None
+    res["achievements"] = None
     return res
+
 
 @app.get("/user/{login}", tags=['user_get'],
          summary='Получение юзера после авторизаци или регистрации')
@@ -94,7 +139,9 @@ async def get_user(login):
     res = jsonable_encoder(userDb)
     user_id = userDb.id
     userTalentsDb = UserTalent.objects.filter(user_id=user_id)
-    talent_infos = {}
+    userStepsDb = UserStep.objects.filter(user_id=user_id)
+    talent_infos = []
+    step_infos = []
     for userTalentDb in userTalentsDb:
         talent_info = {
             "talent_id": userTalentDb.talent_id,
@@ -103,13 +150,22 @@ async def get_user(login):
         }
         talent_infos.append(talent_info)
 
+    for userStepDb in userStepsDb:
+        step_info = {
+            "step_id": userStepDb.step_id,
+            "active": userStepDb.active
+        }
+        step_infos.append(step_info)
+
     res["talent_info"] = talent_infos
+    res["step_info"] = step_infos
     return res
+
 
 @app.get("/user", tags=['user_get_all'],
          summary='Получение юзера после авторизации или регистрации')
 async def get_all_user():
-    logins =[i['login'] for i in User.objects.all().values("login")]
+    logins = [i['login'] for i in User.objects.all().values("login")]
 
     ress = []
     for login in logins:
@@ -118,6 +174,9 @@ async def get_all_user():
         user_id = userDb.id
         userTalentsDb = UserTalent.objects.filter(user_id=user_id)
         talent_infos = []
+        userStepsDb = UserStep.objects.filter(users_id=user_id)
+        step_infos = []
+
         for userTalentDb in userTalentsDb:
             talent_info = {
                 "talent_id": userTalentDb.talent_id,
@@ -125,10 +184,17 @@ async def get_all_user():
                 "talent_level": userTalentDb.talent_level
             }
             talent_infos.append(talent_info)
-    
-        res["talent_info"] = talent_infos
-        ress.append(res)
 
+        for userStepDb in userStepsDb:
+            step_info = {
+                "step_id": userStepDb.step_id,
+                "active": userStepDb.active
+            }
+            step_infos.append(step_info)
+
+        res["talent_info"] = talent_infos
+        res["step_info"] = step_infos
+        ress.append(res)
 
     return jsonable_encoder(ress)
 
@@ -152,16 +218,15 @@ async def change_user(id: int, user: UserFront):
     userDb.save()
     talent_infos = []
     for userTalent in user.talent_info:
-        userTalentDb = UserTalent.objects.filter(Q(talent_id = userTalent["talent_id"]) & Q(user_id = id))
-        if len(userTalentDb)==0:
+        userTalentDb = UserTalent.objects.filter(Q(talent_id=userTalent["talent_id"]) & Q(user_id=id))
+        if len(userTalentDb) == 0:
             userTalentDb = UserTalent.objects.create(
                 user=userDb,
-                talent = Talent.objects.get(id = userTalent["talent_id"]),
-                talent_level = userTalent['talent_level'],
-                talent_points = userTalent['talent_points']
+                talent=Talent.objects.get(id=userTalent["talent_id"]),
+                talent_level=userTalent['talent_level'],
+                talent_points=userTalent['talent_points']
             )
         else:
-
             for x in userTalentDb:
                 userTalentDb = x
                 break
@@ -175,16 +240,39 @@ async def change_user(id: int, user: UserFront):
              "talent_level": userTalent['talent_level']}
         )
 
+    step_infos = []
+    for userStep in user.step_info:
+        userStepDb = UserStep.objects.filter(Q(steps_id=userStep["step_id"]) & Q(users_id=id))
+        if len(userStepDb) == 0:
+            userStepDb = UserStep.objects.create(
+                user=userDb,
+                step=Step.objects.get(id=userStep["step_id"]),
+                active=userStep['active']
+            )
+        else:
+            for x in userStepDb:
+                userStepDb = x
+                break
+
+            userStepDb.active = userStep['active']
+            userStepDb.save()
+        step_infos.append(
+            {"step_id": userStep['step_id'],
+             "active": userStep['active']}
+        )
+
+    for achievement_id in user.achievement_ids:
+        achievementDb = Achievement.get(id=achievement_id)
+        userDb.achievement.add(achievementDb)
+        userDb.save()
+
     res = jsonable_encoder(userDb)
     res["talent_info"] = talent_infos
+    res["step_info"] = step_infos
     return res
 
 
-# /user - POST (добавление юзера после авторизаци или регистрации), { login: string, ..., name: '' } : models.User
-# /user/:login - GET (получение модели юзера по логину) : models.Usersx
-# /user/:login (:id) - PUT (изменить модель юзера), { ...models.Users }: models.Users
-
-@app.post("/talent/", tags=['talent_post'],
+@app.post("/talent", tags=['talent_post'],
           summary='Добавление таланта')
 async def сreate_talent(talent: TalentFront):
     talentDb = Talent.objects.create(
@@ -195,7 +283,11 @@ async def сreate_talent(talent: TalentFront):
     return res
 
 
-@app.get("/talent/", tags=['talent_get'],
+# /user - POST (добавление юзера после авторизаци или регистрации), { login: string, ..., name: '' } : models.User
+# /user/:login - GET (получение модели юзера по логину) : models.Usersx
+# /user/:login (:id) - PUT (изменить модель юзера), { ...models.Users }: models.Users
+
+@app.get("/talent", tags=['talent_get'],
          summary='Получение таланта')
 async def get_talent():
     talentsDb = list(Talent.objects.all())
@@ -203,9 +295,6 @@ async def get_talent():
 
     return res
 
-
-# /talent - POST (создание таланта), { name: string; } : models.Talent
-# /talents - GET : models.Talent[]
 
 @app.get("/challenge/{talent_id}", tags=['challenge_get'],
          summary='Получение челленджей')
@@ -220,20 +309,66 @@ async def get_challenge(talent_id):
     return res_with_talents
 
 
+# /talent - POST (создание таланта), { name: string; } : models.Talent
+# /talents - GET : models.Talent[]
+
+@app.post("/achievement", tags=['achievement_post'],
+          summary='Добавление ачивки')
+async def сreate_achievement(achievement: AchievementFront):
+    achievementDb = Achievement.objects.create(
+        name=achievement.name,
+        image_url=achievement.image_url,
+        description=achievement.description,
+        achievement_type=achievement.achievement_type,
+        talent_points=achievement.talent_points
+    )
+    res = jsonable_encoder(achievementDb)
+
+    return res
+
+
+@app.get("/achievement", tags=['achievement_get'],
+         summary='Получение ачивок')
+async def get_achievements():
+    achievementsDb = list(Achievement.objects.all())
+    res = [jsonable_encoder(x) for x in achievementsDb]
+    return res
+
+
+@app.get("/challenge", tags=['challenge_all_get'],
+         summary='Получение челленджей')
+async def get_all_challenge():
+    challengesDb = list(Challenge.objects.all())
+    if len(challengesDb) == 0:
+        res_with_talents = jsonable_encoder([])
+    else:
+        res = [jsonable_encoder(x) for x in challengesDb]
+        res_with_talents = []
+        for challengeJson in res:
+            challengeJson["talent_id"] = Challenge.objects.get(id=challengeJson["id"]).talent_id
+            res_with_talents.append(challengeJson)
+
+    return res_with_talents
+
+
 @app.post("/challenge", tags=['challenge_post'],
           summary='Добавление челленджей')
 async def post_challenge(challenge: ChallengeFront):
-    challengeDb = Challenge.objects.create(
-        challenge_name=challenge.name,
-        image_url=challenge.url,
-        req_talent_level=challenge.req_talent_level,
-        description=challenge.description
-    )
     talentDb = Talent.objects.get(id=challenge.talent_id)
-    challengeDb.talent = talentDb
-    challengeDb.save()
+    achievementDb = Achievement.objects.get(id=challenge.achievement_id)
+
+    challengeDb = Challenge.objects.create(
+        challenge_name=challenge.challenge_name,
+        image_url=challenge.image_url,
+        req_talent_level=challenge.req_talent_level,
+        description=challenge.description,
+        talent=talentDb,
+        achievement=achievementDb
+    )
+
     res = jsonable_encoder(challengeDb)
     res["talent_id"] = challenge.talent_id
+    res["achievement_id"] = challenge.achievement_id
     return res
 
 
@@ -253,20 +388,228 @@ async def put_challenge(id: int, challenge: ChallengeFront):
     res["talent_id"] = challenge.talent_id
     return res
 
+
+
+
 # /challenges - GET (список доступных челенджев, потом докрутим проверку) : models.Challenge[]
 # /challenge - POST (создать челендж), { ...partial(models.Challenge) } : models.Challenge
 # /challenge/:id - PUT (изменить модель челенджа), { ...models.Challenge } : models.Challenge
-# /challenge/:id - DELETE
+# /challenge/:id - DELETE #TO-DO
+
+@app.get("/task/{challenge_id}", tags=['task_get'],
+         summary='Получение  тасок')
+async def get_task(challenge_id):
+    tasksDb = list(Task.objects.filter(challenge__id=challenge_id))
+    res = [jsonable_encoder(x) for x in tasksDb]
+    res_with_challenges = []
+    for taskJson in res:
+        taskJson["challenge_id"] = challenge_id
+        res_with_challenges.append(taskJson)
+
+    return res_with_challenges
+
+
+@app.get("/task", tags=['task_all_get'],
+         summary='Получение всех тасок')
+async def get_all_tasks():
+    tasksDb = list(Task.objects.all())
+
+    if len(tasksDb) == 0:
+        res_with_challenges = jsonable_encoder([])
+    else:
+        res = [jsonable_encoder(x) for x in tasksDb]
+        res_with_challenges = []
+        for taskJson in res:
+            taskJson["challenge_id"] = Task.objects.get(id=taskJson["id"]).challenge_id
+            res_with_challenges.append(taskJson)
+
+    return res_with_challenges
+
+
+@app.post("/task", tags=['task_post'],
+          summary='Добавление тасок')
+async def post_task(task: TaskFront):
+    challengeDb = Challenge.objects.get(id=task.challenge_id)
+
+    taskDb = Task.objects.create(
+        challenge=challengeDb,
+        task_name=task.task_name,
+        description=task.description,
+        image_url=task.image_url,
+        task_points=task.task_points,
+        task_number=task.task_number
+    )
+
+    res = jsonable_encoder(taskDb)
+    res["challenge_id"] = task.challenge_id
+
+    return res
+
+
+@app.put("/task/{id}", tags=['task_put'],
+         summary='Обновление тасок')
+async def put_task(id: int, task: TaskFront):
+    taskDb = Task.objects.get(id=id)
+
+    taskDb.task_name = task.name,
+    taskDb.description = task.description,
+    taskDb.image_url = task.image_url,
+    taskDb.task_points = task.task_points,
+    taskDb.task_number = task.task_number
+
+    challengeDb = Challenge.objects.get(id=task.challenge_id)
+    taskDb.challenge = challengeDb
+    taskDb.save()
+    res = jsonable_encoder(taskDb)
+    res["challenge_id"] = task.challendge_id
+
+    return res
+
 
 # /task - POST (создать задачку), { partial(models.Task) } : models.Task
 # /tasks/:challengeId - GET (список доступных задач, проверку сделаем потом) : models.Task[]
 # /task/:id - PUT : models.Task
 # /task/:id - DELETE
 
+def convert_meta_urls_string_to_list(meta_url_string):
+    extractor = URLExtract()
+    meta_urls_list = extractor.find_urls(meta_url_string)
+    return meta_urls_list
+
+def convert_meta_urls_list_to_string(meta_url_list):
+
+    meta_url_string = '","'.join(meta_url_list)
+    return '["'+meta_url_string+'"]'
+
+@app.get("/step/{task_id}", tags=['step_get'],
+         summary='Получение  шагов')
+async def get_step(task_id):
+    stepDb = list(Step.objects.filter(task__id=task_id))
+    res = [jsonable_encoder(x) for x in stepDb]
+    res_with_tasks = []
+    for stepJson in res:
+        stepJson["task_id"] = task_id
+        stepJson['meta_urls'] = convert_meta_urls_string_to_list(stepJson['meta_urls'])
+
+        res_with_tasks.append(stepJson)
+
+    return res
+
+
+@app.get("/step", tags=['step_all_get'],
+         summary='Получение всех шагов')
+async def get_all_steps():
+    stepsDb = list(Step.objects.all())
+
+    if len(stepsDb) == 0:
+        res_with_task = jsonable_encoder("")
+    else:
+        res = [jsonable_encoder(x) for x in stepsDb]
+
+
+        res_with_task = []
+        for stepJson in res:
+            stepJson["task_id"] = Step.objects.get(id=stepJson["id"]).task_id
+            stepJson['meta_urls'] = convert_meta_urls_string_to_list(stepJson['meta_urls'])
+            res_with_task.append(stepJson)
+
+    return res_with_task
+
+
+@app.post("/step", tags=['step_post'],
+          summary='Добавление шагов')
+async def post_step(step: StepFront):
+    taskDb = Task.objects.get(id=step.task_id)
+
+    stepDb = Step.objects.create(
+        task=taskDb,
+        step_name=step.step_name,
+        action=step.action,
+        step_number=step.step_number,
+        step_text=step.step_text,
+        image_url=step.image_url,
+        button_text=step.button_text,
+        meta_type=step.meta_type,
+        meta_urls=convert_meta_urls_list_to_string(step.meta_urls)
+    )
+
+    res = jsonable_encoder(stepDb)
+    res["task_id"] = step.task_id
+
+    return res
+
+
+@app.put("/step/{id}", tags=['step_put'],
+         summary='Обновление шагов')
+async def put_step(id: int, step: StepFront):
+    stepDb = Step.objects.get(id=id)
+
+    stepDb.step_name = step.step_name
+    stepDb.image_url = step.image_url
+    stepDb.action = step.action
+    stepDb.step_number = step.step_number
+    stepDb.step_text = step.step_text
+    stepDb.button_text = step.button_text
+    stepDb.meta_type = step.meta_type
+    stepDb.meta_urls = convert_meta_urls_list_to_string(step.meta_urls)
+
+    taskDb = Task.objects.get(id=step.task_id)
+    stepDb.task = taskDb
+    stepDb.save()
+    res = jsonable_encoder(stepDb)
+    res["task_id"] = step.task_id
+
+    return res
+
 # /step - POST (создать задачку), { partial(models.Task) } : models.Task
 # /steps/:taskId - GET (список доступных задач, проверку сделаем потом) : models.Task[]
 # /step/:id - PUT : models.Task
 # /step/:id - DELETE
+
+@app.post("/post", tags=['post_post'],
+          summary='Добавление поста')
+async def сreate_post(post: PostFront):
+    userStepDb = UserStep.objects.filter(Q(steps_id=post.step_id) & Q(users_id=post.user_id))
+    for x in userStepDb:
+        userStepDb = x
+        break
+    postDb = Post.objects.create(
+        user_steps=userStepDb,
+        description = post.description,
+        image_url = post.image_url,
+        social_url = post.social_url
+    )
+    res = jsonable_encoder(postDb)
+    return res
+
+
+@app.get("/post/{user_id}", tags=['post_get'],
+         summary='Получение постов')
+async def get_posts(user_id):
+    userStepsDb = UserStep.objects.filter(users__id = user_id)
+    achievementsDb = list(Achievement.objects.all())
+    res = [jsonable_encoder(x) for x in achievementsDb]
+    return res
+
+@app.get("/events", tags=['events_all_get'],
+         summary='Получение всех событий')
+async def get_all_events():
+    eventsDb = list(Product.objects.all())
+
+    res = [jsonable_encoder(x) for x in eventsDb]
+
+    return res
+
+
+@app.get("/parse")
+async def parse_users_from_file():
+    parser = UsersParser()
+    parser.parse()
+
+@app.get("/parse_events")
+async def parse_events_from_file():
+    parser = EventParser()
+    parser.parse()
 
 # лучше стартовать из под консоли
 # if __name__ == "__main__":
