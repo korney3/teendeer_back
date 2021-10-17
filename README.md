@@ -22,6 +22,17 @@ pip install -r requirements.txt
 
 ### Executing program
 
+#### Database
+
+```
+python3 manage.py makemigrations
+```
+
+```
+python3 manage.py migrate
+```
+
+#### Server
 
 ```
 uvicorn api:app --reload --port 5000 --host=0.0.0.0
