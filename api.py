@@ -4,6 +4,7 @@ from typing import Optional
 import django
 from django.db.models import Q
 from pydantic import BaseModel
+from urlextract import URLExtract
 
 from services.UsersParsers import UsersParser
 
@@ -332,7 +333,7 @@ async def get_achievements():
 async def get_all_challenge():
     challengesDb = list(Challenge.objects.all())
     if len(challengesDb) == 0:
-        res_with_talents = jsonable_encoder("")
+        res_with_talents = jsonable_encoder([])
     else:
         res = [jsonable_encoder(x) for x in challengesDb]
         res_with_talents = []
@@ -411,7 +412,7 @@ async def get_all_tasks():
     tasksDb = list(Task.objects.all())
 
     if len(tasksDb) == 0:
-        res_with_challenges = jsonable_encoder("")
+        res_with_challenges = jsonable_encoder([])
     else:
         res = [jsonable_encoder(x) for x in tasksDb]
         res_with_challenges = []
@@ -467,11 +468,22 @@ async def put_task(id: int, task: TaskFront):
 # /task/:id - PUT : models.Task
 # /task/:id - DELETE
 
+def convert_meta_urls_string_to_list(meta_url_string):
+    extractor = URLExtract()
+    meta_urls_list = extractor.find_urls(meta_url_string)
+    return meta_urls_list
+
+def convert_meta_urls_list_to_string(meta_url_list):
+
+    meta_url_string = '","'.join(meta_url_list)
+    return '["'+meta_url_string+'"]'
+
 @app.get("/step/{task_id}", tags=['step_get'],
          summary='Получение  шагов')
 async def get_step(task_id):
     stepDb = list(Step.objects.filter(task__id=task_id))
     res = [jsonable_encoder(x) for x in stepDb]
+    res['meta_urls'] = convert_meta_urls_string_to_list(res['meta_urls'])
     res_with_tasks = []
     for stepJson in res:
         stepJson["task_id"] = task_id
@@ -489,6 +501,7 @@ async def get_all_steps():
         res_with_task = jsonable_encoder("")
     else:
         res = [jsonable_encoder(x) for x in stepsDb]
+        res['meta_urls'] = convert_meta_urls_string_to_list(res['meta_urls'])
         res_with_task = []
         for stepJson in res:
             stepJson["task_id"] = Step.objects.get(id=stepJson["id"]).task_id
@@ -511,7 +524,7 @@ async def post_step(step: StepFront):
         image_url=step.image_url,
         button_text=step.button_text,
         meta_type=step.meta_type,
-        meta_urls=step.meta_urls
+        meta_urls=convert_meta_urls_list_to_string(step.meta_urls)
     )
 
     res = jsonable_encoder(stepDb)
@@ -532,7 +545,7 @@ async def put_step(id: int, step: StepFront):
     stepDb.step_text = step.step_text
     stepDb.button_text = step.button_text
     stepDb.meta_type = step.meta_type
-    stepDb.meta_urls = step.meta_urls
+    stepDb.meta_urls = convert_meta_urls_list_to_string(step.meta_urls)
 
     taskDb = Task.objects.get(id=step.task_id)
     stepDb.task = taskDb
